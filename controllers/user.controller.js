@@ -15,16 +15,16 @@ export const getUsers = async (req, res, next) => {
 
 export const getUser = async (req, res, next) => {
   try{
-    const user = await User.findById(req.param.id).select('-password');
+    const user = await User.findById(req.params.id);
 
     if(!user){
-      const error = new error ('User not found');
+      const error = new Error ('User not found');
       error.statusCode = 404;
       throw error;
     }
 
     res.status(200).json({
-      sucsess: true,
+      success: true,
       data: user
     })
 
