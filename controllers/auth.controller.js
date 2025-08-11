@@ -34,7 +34,7 @@ export const signUp = async (req, res, next) => {
       // updatedAt: Date.now
     }], { session });
 
-    const token = jwt.sign({ userid: newUser[0]._id }, JWT_SECRET, { expiresIn: JWT_EXPIRE });
+    const token = jwt.sign({ userId: newUser[0]._id }, JWT_SECRET, { expiresIn: JWT_EXPIRE });
 
     await session.commitTransaction();
     session.endSession();
@@ -57,7 +57,7 @@ export const signUp = async (req, res, next) => {
 export const signIn = async (req, res, next) => {
 try{
   const {email, password} = req.body;
-  const user = await User.findOne({email});
+  const user = await User.findOne({email}).select('+password');
   if (!user){
     const error = new Error('User not found');
     error.statusCode = 404;
@@ -72,13 +72,21 @@ try{
   }
 
   const token = jwt.sign({userId: user._id}, JWT_SECRET, {expiresIn: JWT_EXPIRE});
+
+  // Remove password from the user object before sending it in the response
+  const { password: hashedPassword, ...rest} = user._doc;
+
+  res.cookie('token', token, {
+    httpOnly: true,
+    expire: new Date(Date.now() + 24*60*60*1000), //24hour
+    secure: process.env.NODE_ENV === 'development',
+  });
+
+
   res.status(202).json({
     success: true,
     message: 'User signed in successfully', 
-    data: {
-      token,
-      user
-    }
+    user: rest,
   });
 
 } catch(error) {
@@ -86,4 +94,11 @@ try{
   }
 }
 
-export const signOut = async (req, res, next) => {}
+export const signOut = async (req, res, next) => {
+  try{
+    res.clearCookie('token');
+    res.status(200).json( {success: true, message: 'Sign out successfully.'} );
+  } catch (error) {
+    next(error);
+  }
+}
